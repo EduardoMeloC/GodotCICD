@@ -1,0 +1,204 @@
+name: "godot-ci export"
+on: push
+
+env:
+  GODOT_VERSION: 4.2.1
+  EXPORT_NAME: GodotCICD
+  PROJECT_PATH: GodotCICD
+
+jobs:
+  export-windows:
+    name: Windows Export
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Setup
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      - name: Windows Build
+        run: |
+          mkdir -v -p build/windows
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "Windows Desktop" ../build/windows/$EXPORT_NAME.exe
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: windows
+          path: build/windows
+
+  export-linux:
+    name: Linux Export
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Setup
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      - name: Linux Build
+        run: |
+          mkdir -v -p build/linux
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "Linux/X11" ../build/linux/$EXPORT_NAME.x86_64
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: linux
+          path: build/linux
+
+  export-web:
+    name: Web Export
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Setup
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      - name: Web Build
+        run: |
+          mkdir -v -p build/web
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "Web" ../build/web/index.html
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: web
+          path: build/web
+
+  export-mac:
+    name: Mac Export
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Setup
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      - name: Mac Build
+        run: |
+          mkdir -v -p build/mac
+          cd $PROJECT_PATH
+          godot --headless --verbose --export-release "Mac OS" ../build/mac/$EXPORT_NAME.zip
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: mac
+          path: build/mac
+
+  deploy-to-itchio-windows:
+    name: Deploy to itch.io (Windows)
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Download Artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: windows
+          path: build/windows
+      - name: Deploy to itch.io (Windows)
+        run: |
+          butler push ./build/windows ${{ secrets.ITCHIO_USERNAME }}/${{ secrets.ITCHIO_GAME }}:windows
+    env:
+      ITCHIO_USERNAME: ${{ secrets.ITCHIO_USERNAME }}
+      ITCHIO_GAME: ${{ secrets.ITCHIO_GAME }}
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    needs: export-windows
+
+  deploy-to-itchio-linux:
+    name: Deploy to itch.io (Linux)
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Download Artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: linux
+          path: build/linux
+      - name: Deploy to itch.io (Linux)
+        run: |
+          butler push ./build/linux ${{ secrets.ITCHIO_USERNAME }}/${{ secrets.ITCHIO_GAME }}:linux
+    env:
+      ITCHIO_USERNAME: ${{ secrets.ITCHIO_USERNAME }}
+      ITCHIO_GAME: ${{ secrets.ITCHIO_GAME }}
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    needs: export-linux
+
+  deploy-to-itchio-web:
+    name: Deploy to itch.io (Web)
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Download Artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: web
+          path: build/web
+      - name: Deploy to itch.io (Web)
+        run: |
+          butler push ./build/web ${{ secrets.ITCHIO_USERNAME }}/${{ secrets.ITCHIO_GAME }}:html
+    env:
+      ITCHIO_USERNAME: ${{ secrets.ITCHIO_USERNAME }}
+      ITCHIO_GAME: ${{ secrets.ITCHIO_GAME }}
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    needs: export-web
+
+  deploy-to-itchio-mac:
+    name: Deploy to itch.io (Mac)
+    runs-on: ubuntu-20.04
+    container:
+      image: barichello/godot-ci:4.2.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Download Artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: mac
+          path: build/mac
+      - name: Deploy to itch.io (Mac)
+        run: |
+          butler push ./build/mac ${{ secrets.ITCHIO_USERNAME }}/${{ secrets.ITCHIO_GAME }}:mac
+    env:
+      ITCHIO_USERNAME: ${{ secrets.ITCHIO_USERNAME }}
+      ITCHIO_GAME: ${{ secrets.ITCHIO_GAME }}
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    needs: export-mac
